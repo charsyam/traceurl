@@ -18,6 +18,7 @@ class TraceUrl(object):
         self.TRACE_NUMBER   = DEFAULT_TRACE_NUMBER
         self.TRACE_MODE     = DEFAULT_TRACE_MODE
         self.trace_urls     = []
+        self.use_proxy      = False
 
     def get_meta_redirection_info(self, body):
         global meta_redirect_pattern
@@ -46,7 +47,6 @@ class TraceUrl(object):
 
         for i in xrange(self.TRACE_NUMBER):
             status, request, headers, body = self.trace(url)
-#            import pdb; pdb.set_trace()
             if status == True:
                 if int(headers['status']) in [300, 301, 302, 303, 307]:
                     if headers.has_key('location'):
@@ -77,10 +77,21 @@ class TraceUrl(object):
 
         return "GET"
 
+    def get_proxy_info(self):
+        pi = httplib2.proxy_info_from_environment()
+        if not (hasattr(httplib2, 'socks') and
+                hasattr(httplib2.socks, 'PROXY_TYPE_HTTP_NO_TUNNEL')):
+            return pi
+  
+        pi.proxy_type = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL
+        return pi
+
     def trace(self, url, request = None):
         first_chance = True
         if request is None:
             request = httplib2.Http()
+            if self.use_proxy:
+                request.proxy_info = self.get_proxy_info()
             request.follow_redirects = False
         else:
             first_chance = False
