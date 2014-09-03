@@ -94,8 +94,8 @@ class TraceUrl(object):
                 return pi
         else:
             pi = httplib2.ProxyInfo(proxy_type = self.proxy_type,
-                                    proxy_host = host,
-                                    proxy_port = port)
+                                    proxy_host = self.proxy_host,
+                                    proxy_port = self.proxy_port)
 
         pi.proxy_type = self.proxy_type
         return pi
