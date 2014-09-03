@@ -5,10 +5,10 @@ import re
 DETAIL_TRACE_MODE = 0
 
 #Using HEAD sometimes GET
-BEST_TRACE_MODE = 1
+FAST_TRACE_MODE = 1
 
 DEFAULT_TRACE_NUMBER = 5
-DEFAULT_TRACE_MODE = BEST_TRACE_MODE
+DEFAULT_TRACE_MODE = DETAIL_TRACE_MODE
 
 meta_redirect_pattern = re.compile("<meta\s+(http-equiv|content)=['\"]?([^'\"]+)['\"]?\s+(http-equiv|content)=['\"]?([^'\"]*)['\"]?\s*/?>")
 
@@ -81,7 +81,7 @@ class TraceUrl(object):
                 return False, self.trace_urls
 
     def get_trace_method(self, first_chance):
-        if self.TRACE_MODE == BEST_TRACE_MODE and first_chance == True:
+        if self.TRACE_MODE == FAST_TRACE_MODE and first_chance == True:
             return "HEAD"
 
         return "GET"
