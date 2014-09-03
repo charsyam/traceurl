@@ -19,6 +19,15 @@ class TraceUrl(object):
         self.TRACE_MODE     = DEFAULT_TRACE_MODE
         self.trace_urls     = []
         self.use_proxy      = False
+        self.proxy_type     = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL;
+        self.proxy_host     = None
+        self.proxy_port     = 80
+
+    def set_proxy_info(self, host, port, proxy_type = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL):
+        self.use_proxy = True
+        self.proxy_type = proxy_type
+        self.proxy_host = host
+        self.proxy_port = port
 
     def get_meta_redirection_info(self, body):
         global meta_redirect_pattern
@@ -78,12 +87,17 @@ class TraceUrl(object):
         return "GET"
 
     def get_proxy_info(self):
-        pi = httplib2.proxy_info_from_environment()
-        if not (hasattr(httplib2, 'socks') and
-                hasattr(httplib2.socks, 'PROXY_TYPE_HTTP_NO_TUNNEL')):
-            return pi
-  
-        pi.proxy_type = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL
+        if self.proxy_host is None:
+            pi = httplib2.proxy_info_from_environment()
+            if not (hasattr(httplib2, 'socks') and
+                    hasattr(httplib2.socks, 'PROXY_TYPE_HTTP_NO_TUNNEL')):
+                return pi
+        else:
+            pi = httplib2.ProxyInfo(proxy_type = self.proxy_type,
+                                    proxy_host = host,
+                                    proxy_port = port)
+
+        pi.proxy_type = self.proxy_type
         return pi
 
     def trace(self, url, request = None):
