@@ -40,7 +40,7 @@ class TraceUrl(object):
                 pos = item.find("url=")
                 if (pos >= 0):
                     find = True
-                    url = item[pos+4:]
+                    url = item[pos+4:].strip()
                     break
 
             if (find == True):
