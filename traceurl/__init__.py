@@ -16,6 +16,12 @@ DEFAULT_TRACE_NUMBER = 5
 DEFAULT_TRACE_MODE = DETAIL_TRACE_MODE
 
 meta_redirect_pattern = re.compile("<meta\s+(http-equiv|content)=['\"]?([^'\"]+)['\"]?\s+(http-equiv|content)=['\"]?([^'\"]*)['\"]?\s*/?>")
+js1_redirect_pattern = re.compile("location.href=['\"]?([^'\"]*)['\"]?\s*/?")
+js2_redirect_pattern = re.compile("location.replace\(['\"]?([^'\"]*)[,]?['\"]?\s*/?\)")
+
+CANT_REDIRECT_TYPE = 0
+META_REDIRECT_TYPE = 1
+JS_REDIRECT_TYPE = 2
 
 class TraceUrl(object):
 
@@ -34,6 +40,40 @@ class TraceUrl(object):
         self.proxy_type = proxy_type
         self.proxy_host = host
         self.proxy_port = port
+
+    def extract_rediection_info_from_body(self, body):
+        ok, url = self.get_meta_redirection_info(body)
+        if ok == True:
+            return META_REDIRECT_TYPE, url
+
+        ok, url = self.get_js1_redirection_info(body)
+        if ok == True:
+            return JS_REDIRECT_TYPE, url
+
+        ok, url = self.get_js2_redirection_info(body)
+        if ok == True:
+            return JS_REDIRECT_TYPE, url
+
+        return False, ""
+
+    def get_js_redirection_info(self, body, pattern):
+        groups = pattern.findall(body)
+
+        find = False
+        url = ""
+        if len(groups) > 0:
+            find = True
+            url = groups[0].strip()
+
+        return find, url
+
+    def get_js1_redirection_info(self, body):
+        global js1_redirect_pattern
+        return self.get_js_redirection_info(body, js1_redirect_pattern)
+
+    def get_js2_redirection_info(self, body):
+        global js2_redirect_pattern
+        return self.get_js_redirection_info(body, js2_redirect_pattern)
 
     def get_meta_redirection_info(self, body):
         global meta_redirect_pattern
@@ -59,8 +99,8 @@ class TraceUrl(object):
 
     def get_new_url(self, urlinfo, url):
         new_url = ""
-        if url.startswith('http://') == False and \
-           url.startswith('https://'):
+        if url.startswith('http://') == True or \
+           url.startswith('https://') == True:
                new_url = url
         else:
             if url.startswith('/') == True:
@@ -88,8 +128,8 @@ class TraceUrl(object):
 
                 if int(headers['status']) in [200]:
                     status, request, headers, body = self.trace(url, request)
-                    is_meta_redirect, new_url = self.get_meta_redirection_info(body)
-                    if is_meta_redirect:
+                    redirect_type, new_url = self.extract_rediection_info_from_body(body)
+                    if redirect_type in [META_REDIRECT_TYPE, JS_REDIRECT_TYPE]:
                         self.append_url(url)
                         o = urlparse(url)
                         new_url = self.get_new_url(o, new_url)
@@ -98,7 +138,7 @@ class TraceUrl(object):
                     else:
                         self.append_url(url)
                         return True, self.trace_urls
-                
+
                 return False, self.trace_urls
             else:
                 return False, self.trace_urls
