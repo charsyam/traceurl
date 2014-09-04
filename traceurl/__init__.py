@@ -1,5 +1,10 @@
+# -*- coding:utf-8 -*-
+
 import httplib2
+from encodings.punycode import punycode_encode
+from encodings import idna
 import re
+from urlparse import urlparse 
 
 #Using GET ONLY
 DETAIL_TRACE_MODE = 0
@@ -22,6 +27,7 @@ class TraceUrl(object):
         self.proxy_type     = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL;
         self.proxy_host     = None
         self.proxy_port     = 80
+        self.use_punycode   = True
 
     def set_proxy_info(self, host, port, proxy_type = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL):
         self.use_proxy = True
@@ -53,6 +59,8 @@ class TraceUrl(object):
 
     def go(self, url, callback=None):
         self.trace_urls = []
+        if self.use_punycode:
+            url = self.get_punycode_url(url)
 
         for i in xrange(self.TRACE_NUMBER):
             status, request, headers, body = self.trace(url)
@@ -85,6 +93,34 @@ class TraceUrl(object):
             return "HEAD"
 
         return "GET"
+
+    def need_punycode(self, string):
+        for ch in string:
+            if ord(ch) > 127:
+                return True
+
+        return False
+
+    def get_punycode_url(self, url):
+        if self.need_punycode(url) == False:
+            return url
+
+        o = urlparse(url)
+        ret_parts = []
+        parts = idna.dots.split(o.netloc)
+
+        for part in parts:
+            if self.need_punycode(part) == True:
+                part = "xn--%s"%(punycode_encode(part.decode('utf8')))
+
+            ret_parts.append(part)
+
+        if o.query == "":
+            target_url = "%s://%s%s"%(o.scheme, '.'.join(ret_parts), o.path)
+        else:
+            target_url = "%s://%s%s?%s"%(o.scheme, '.'.join(ret_parts), o.path, o.query)
+
+        return target_url
 
     def get_proxy_info(self):
         if self.proxy_host is None:
