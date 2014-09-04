@@ -57,6 +57,19 @@ class TraceUrl(object):
     def append_url(self, url):
         self.trace_urls.append(url)
 
+    def get_new_url(self, urlinfo, url):
+        new_url = ""
+        if url.startswith('http://') == False and \
+           url.startswith('https://'):
+               new_url = url
+        else:
+            if url.startswith('/') == True:
+                new_url = "%s://%s%s"%(urlinfo.scheme, urlinfo.netloc, url)
+            else:
+                new_url = "%s://%s%s/%s"%(urlinfo.scheme, urlinfo.netloc, urlinfo.path, url)
+
+        return new_url
+
     def go(self, url, callback=None):
         self.trace_urls = []
         if self.use_punycode:
@@ -78,6 +91,8 @@ class TraceUrl(object):
                     is_meta_redirect, new_url = self.get_meta_redirection_info(body)
                     if is_meta_redirect:
                         self.append_url(url)
+                        o = urlparse(url)
+                        new_url = self.get_new_url(o, new_url)
                         url = new_url
                         continue
                     else:
