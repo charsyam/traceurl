@@ -12,12 +12,12 @@ DETAIL_TRACE_MODE = 0
 #Using HEAD sometimes GET
 FAST_TRACE_MODE = 1
 
-DEFAULT_TRACE_NUMBER = 5
+DEFAULT_TRACE_NUMBER = 7
 DEFAULT_TRACE_MODE = DETAIL_TRACE_MODE
 
 meta_redirect_pattern = re.compile("<meta\s+(http-equiv|content)=['\"]?([^'\"]+)['\"]?\s+(http-equiv|content)=['\"]?([^'\"]*)['\"]?\s*/?>")
-js1_redirect_pattern = re.compile("location.href=['\"]?([^'\"]*)['\"]?\s*/?")
-js2_redirect_pattern = re.compile("location.replace\(['\"]?([^'\"]*)[,]?['\"]?\s*/?\)")
+js1_redirect_pattern = re.compile("location.href\s*=\s*['\"]?([^'\"]*)['\"]?\s*/?")
+js2_redirect_pattern = re.compile("location.replace\s*\(\s*['\"]?([^'\"]*)[,]?['\"]?\s*/?\)")
 
 CANT_REDIRECT_TYPE = 0
 META_REDIRECT_TYPE = 1
@@ -116,13 +116,13 @@ class TraceUrl(object):
             url = self.get_punycode_url(url)
 
         for i in xrange(self.TRACE_NUMBER):
+            self.append_url(url)
             status, request, headers, body = self.trace(url)
             if status == True:
                 if int(headers['status']) in [300, 301, 302, 303, 307]:
                     if headers.has_key('location'):
                         headers['content-length'] = headers['location']
 
-                    self.append_url(url)
                     url = headers['content-length']
                     continue
 
@@ -130,18 +130,16 @@ class TraceUrl(object):
                     status, request, headers, body = self.trace(url, request)
                     redirect_type, new_url = self.extract_rediection_info_from_body(body)
                     if redirect_type in [META_REDIRECT_TYPE, JS_REDIRECT_TYPE]:
-                        self.append_url(url)
                         o = urlparse(url)
                         new_url = self.get_new_url(o, new_url)
                         url = new_url
                         continue
                     else:
-                        self.append_url(url)
                         return True, self.trace_urls
 
-                return False, self.trace_urls
+                return True, self.trace_urls
             else:
-                return False, self.trace_urls
+                return True, self.trace_urls
 
     def get_trace_method(self, first_chance):
         if self.TRACE_MODE == FAST_TRACE_MODE and first_chance == True:
