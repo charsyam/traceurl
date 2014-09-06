@@ -63,7 +63,11 @@ class TraceUrl(object):
         url = ""
         if len(groups) > 0:
             find = True
-            url = groups[0].strip()
+            parts = re.split(';|\t|\n| ', groups[0].strip())
+            url = parts[0]
+            if len(parts) > 1:
+                find = False
+                url = ""
 
         return find, url
 
@@ -110,6 +114,12 @@ class TraceUrl(object):
 
         return new_url
 
+    def is_same_url(self, url, new_url):
+        if(url == new_url):
+            return True
+
+        return False
+
     def go(self, url, callback=None):
         self.trace_urls = []
         if self.use_punycode:
@@ -132,6 +142,9 @@ class TraceUrl(object):
                     if redirect_type in [META_REDIRECT_TYPE, JS_REDIRECT_TYPE]:
                         o = urlparse(url)
                         new_url = self.get_new_url(o, new_url)
+                        if self.is_same_url(url, new_url):
+                            return True, self.trace_urls
+
                         url = new_url
                         continue
                     else:
