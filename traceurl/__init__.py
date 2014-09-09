@@ -4,7 +4,7 @@ import httplib2
 from encodings.punycode import punycode_encode
 from encodings import idna
 import re
-from urlparse import urlparse 
+from urlparse import urlparse
 
 #Using GET ONLY
 DETAIL_TRACE_MODE = 0
@@ -13,7 +13,7 @@ DETAIL_TRACE_MODE = 0
 FAST_TRACE_MODE = 1
 
 DEFAULT_TRACE_NUMBER = 7
-DEFAULT_TRACE_MODE = DETAIL_TRACE_MODE
+DEFAULT_TRACE_MODE = FAST_TRACE_MODE
 
 meta_redirect_pattern = re.compile("<meta\s+(http-equiv|content)=['\"]?([^'\"]+)['\"]?\s+(http-equiv|content)=['\"]?([^'\"]*)['\"]?\s*/?>")
 js1_redirect_pattern = re.compile("location.href\s*=\s*['\"]?([^'\"]*)['\"]?\s*/?")
@@ -34,6 +34,7 @@ class TraceUrl(object):
         self.proxy_host     = None
         self.proxy_port     = 80
         self.use_punycode   = True
+        self.current_method = ""
 
     def set_proxy_info(self, host, port, proxy_type = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL):
         self.use_proxy = True
@@ -125,18 +126,27 @@ class TraceUrl(object):
         if self.use_punycode:
             url = self.get_punycode_url(url)
 
+        request = None
+        add_url = True
         for i in xrange(self.TRACE_NUMBER):
-            self.append_url(url)
-            status, request, headers, body = self.trace(url)
+            if add_url is True:
+                self.append_url(url)
+
+            add_url = True
+            status, request, headers, body = self.trace(url, request)
             if status == True:
                 if int(headers['status']) in [300, 301, 302, 303, 307]:
                     if headers.has_key('location'):
                         headers['content-length'] = headers['location']
 
                     url = headers['content-length']
+                    request = None
                     continue
 
-                if int(headers['status']) in [200]:
+                elif int(headers['status']) in [200]:
+                    if headers['content-type'] != "text/html":
+                        return True, self.trace_urls
+
                     status, request, headers, body = self.trace(url, request)
                     redirect_type, new_url = self.extract_rediection_info_from_body(body)
                     if redirect_type in [META_REDIRECT_TYPE, JS_REDIRECT_TYPE]:
@@ -150,8 +160,13 @@ class TraceUrl(object):
                     else:
                         return True, self.trace_urls
 
+                elif self.current_method == 'HEAD' and int(headers['status']) in [404]:
+                    add_url = False
+                    continue;
+
                 return True, self.trace_urls
             else:
+
                 return True, self.trace_urls
 
     def get_trace_method(self, first_chance):
@@ -213,7 +228,8 @@ class TraceUrl(object):
             first_chance = False
 
         try:
-            resp = request.request(url, self.get_trace_method(first_chance))
+            self.current_method = self.get_trace_method(first_chance)
+            resp = request.request(url, self.current_method)
             return True, request, resp[0], resp[1]
         except:
             return False, None, None, None
