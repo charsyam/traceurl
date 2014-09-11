@@ -18,10 +18,18 @@ DEFAULT_TRACE_MODE = FAST_TRACE_MODE
 meta_redirect_pattern = re.compile("<meta\s+(http-equiv|content)=['\"]?([^'\"]+)['\"]?\s+(http-equiv|content)=['\"]?([^'\"]*)['\"]?\s*/?>")
 js1_redirect_pattern = re.compile("location.href\s*=\s*['\"]?([^'\"]*)['\"]?\s*/?")
 js2_redirect_pattern = re.compile("location.replace\s*\(\s*['\"]?([^'\"]*)[,]?['\"]?\s*/?\)")
+frameset_pattern = re.compile("(?im)<frame\s+(name|src)=['\"]?([^'\"]+)['\"]?\s+(?im)(name|src)=['\"]?([^'\"]*)['\"]?\s*/?>")
 
 CANT_REDIRECT_TYPE = 0
 META_REDIRECT_TYPE = 1
 JS_REDIRECT_TYPE = 2
+FRAMESET_REDIRECT_TYPE = 3
+
+REDIRECT_LIST = [
+        META_REDIRECT_TYPE,
+        JS_REDIRECT_TYPE,
+        FRAMESET_REDIRECT_TYPE
+]
 
 class TraceUrl(object):
 
@@ -47,6 +55,10 @@ class TraceUrl(object):
         if ok == True:
             return META_REDIRECT_TYPE, url
 
+        ok, url = self.get_frameset_redirection_info(body)
+        if ok == True:
+            return FRAMESET_REDIRECT_TYPE, url
+
         ok, url = self.get_js1_redirection_info(body)
         if ok == True:
             return JS_REDIRECT_TYPE, url
@@ -56,6 +68,31 @@ class TraceUrl(object):
             return JS_REDIRECT_TYPE, url
 
         return False, ""
+
+    def get_frameset_redirection_info(self, body):
+        global frameset_pattern
+        groups = frameset_pattern.findall(body)
+
+        find = False
+        url = ""
+        if len(groups) > 0:
+            for group in groups:
+                if group[0].lower() == "name":
+                    url = group[3]
+                    find = True
+                    break
+
+                elif group[0].lower() == "src":
+                    if group[1] == "":
+                        continue
+
+                    url = group[1]
+                    find = True
+                    break
+                else:
+                    find = False
+
+        return find, url
 
     def get_js_redirection_info(self, body, pattern):
         groups = pattern.findall(body)
@@ -149,7 +186,7 @@ class TraceUrl(object):
 
                     status, request, headers, body = self.trace(url, request)
                     redirect_type, new_url = self.extract_rediection_info_from_body(body)
-                    if redirect_type in [META_REDIRECT_TYPE, JS_REDIRECT_TYPE]:
+                    if redirect_type in REDIRECT_LIST:
                         o = urlparse(url)
                         new_url = self.get_new_url(o, new_url)
                         if self.is_same_url(url, new_url):

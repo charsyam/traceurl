@@ -4,7 +4,8 @@ traceurl
 Tracing url address
  * follow 30x 
  * follow meta tag
- * can't follow javascript location change
+ * can follow some cases of javascript location change
+ * can follow some cases of frameset
  * support http_proxy
 
 install traceurl

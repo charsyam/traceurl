@@ -21,6 +21,7 @@ class TestTraceUrl(unittest.TestCase):
         self.assertEqual(len(urls), 2)
         self.assertSequenceEqual(urls, result_urls)
 
+    #redirect and big file
     def test_url3(self):
         result_urls = ['http://goo.gl/gHzZIE', 'http://apache.mirror.cdnetworks.com/hadoop/common/hadoop-2.5.0/hadoop-2.5.0.tar.gz']
 
@@ -28,6 +29,7 @@ class TestTraceUrl(unittest.TestCase):
         self.assertEqual(len(urls), 2)
         self.assertSequenceEqual(urls, result_urls)
 
+    #redirect twice
     def test_url4(self):
         result_urls = ['http://bit.ly/1qAE4Ks', 'http://goo.gl/nwRmI', 'http://charsyam.wordpress.com/2011/08/22/memcached%EB%A5%BC-%EC%9D%B4%EC%9A%A9%ED%95%9C-simple-%EB%B6%84%EC%82%B0-%EB%9D%BD%EC%97%90-%EB%8C%80%ED%95%9C-%EC%A7%A7%EC%9D%80-%EA%B3%A0%EC%B0%B0/']
 
@@ -35,6 +37,13 @@ class TestTraceUrl(unittest.TestCase):
         self.assertEqual(len(urls), 3)
         self.assertSequenceEqual(urls, result_urls)
 
+    #frameset test
+    def test_url5(self):
+        result_urls =  ['http://idol.zcc.kr', 'http://moum.kr/idol', 'http://moum.kr/idol/', 'http://www.toptoon.com/comic/ep_list/idoltwo/?p_id=page']
+
+        ok, urls = self.request.go("http://idol.zcc.kr")
+        self.assertEqual(len(urls), 4)
+        self.assertSequenceEqual(urls, result_urls)
+
 if __name__ == '__main__':
     unittest.main()
-
