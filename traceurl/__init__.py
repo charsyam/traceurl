@@ -148,7 +148,10 @@ class TraceUrl(object):
             if url.startswith('/') == True:
                 new_url = "%s://%s%s"%(urlinfo.scheme, urlinfo.netloc, url)
             else:
-                new_url = "%s://%s%s/%s"%(urlinfo.scheme, urlinfo.netloc, urlinfo.path, url)
+                paths = urlinfo.path.split('/')
+                paths[-1] = url
+                new_path = '/'.join(paths)
+                new_url = "%s://%s%s"%(urlinfo.scheme, urlinfo.netloc, new_path)
 
         return new_url
 
@@ -174,9 +177,16 @@ class TraceUrl(object):
             if status == True:
                 if int(headers['status']) in [300, 301, 302, 303, 307]:
                     if headers.has_key('location'):
-                        headers['content-length'] = headers['location']
+                        new_url = headers['location']
+                        o = urlparse(url)
+                        new_url = self.get_new_url(o, new_url)
+                        if self.is_same_url(url, new_url):
+                            return True, self.trace_urls
 
-                    url = headers['content-length']
+                        url = new_url
+                    else:
+                        return True, self.trace_urls
+
                     request = None
                     continue
 
