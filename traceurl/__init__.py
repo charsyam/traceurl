@@ -5,6 +5,7 @@ from encodings.punycode import punycode_encode
 from encodings import idna
 import re
 from urlparse import urlparse
+import urllib
 
 #Using GET ONLY
 DETAIL_TRACE_MODE = 0
@@ -161,6 +162,26 @@ class TraceUrl(object):
 
         return False
 
+    def encode_url_path(self, urlinfo, url):
+        if self.need_encode(urlinfo.path) == False:
+            return url
+
+        parts = urlinfo.path.split('/')
+        ret_parts = []
+        for part in parts:
+            if self.need_encode(part) == True:
+                part = urllib.quote_plus(part)
+
+            ret_parts.append(part)
+
+        new_path = '/'.join(ret_parts)
+        if urlinfo.query == "":
+            new_url = "%s://%s%s"%(urlinfo.scheme, urlinfo.netloc, new_path)
+        else:
+            new_url = "%s://%s%s?%s"%(urlinfo.scheme, urlinfo.netloc, new_path, urlinfo.query)
+
+        return new_url
+
     def go(self, url, callback=None):
         self.trace_urls = []
         if self.use_punycode:
@@ -172,13 +193,14 @@ class TraceUrl(object):
             if add_url is True:
                 self.append_url(url)
 
+            o = urlparse(url)
+            url = self.encode_url_path(o, url)
             add_url = True
             status, request, headers, body = self.trace(url, request)
             if status == True:
                 if int(headers['status']) in [300, 301, 302, 303, 307]:
                     if headers.has_key('location'):
                         new_url = headers['location']
-                        o = urlparse(url)
                         new_url = self.get_new_url(o, new_url)
                         if self.is_same_url(url, new_url):
                             return True, self.trace_urls
@@ -191,13 +213,12 @@ class TraceUrl(object):
                     continue
 
                 elif int(headers['status']) in [200]:
-                    if headers['content-type'] != "text/html":
+                    if headers['content-type'].startswith("text/html") is False:
                         return True, self.trace_urls
 
                     status, request, headers, body = self.trace(url, request)
                     redirect_type, new_url = self.extract_rediection_info_from_body(body)
                     if redirect_type in REDIRECT_LIST:
-                        o = urlparse(url)
                         new_url = self.get_new_url(o, new_url)
                         if self.is_same_url(url, new_url):
                             return True, self.trace_urls
@@ -222,7 +243,7 @@ class TraceUrl(object):
 
         return "GET"
 
-    def need_punycode(self, string):
+    def need_encode(self, string):
         for ch in string:
             if ord(ch) > 127:
                 return True
@@ -230,7 +251,7 @@ class TraceUrl(object):
         return False
 
     def get_punycode_url(self, url):
-        if self.need_punycode(url) == False:
+        if self.need_encode(url) == False:
             return url
 
         o = urlparse(url)
@@ -238,7 +259,7 @@ class TraceUrl(object):
         parts = idna.dots.split(o.netloc)
 
         for part in parts:
-            if self.need_punycode(part) == True:
+            if self.need_encode(part) == True:
                 part = "xn--%s"%(punycode_encode(part.decode('utf8')))
 
             ret_parts.append(part)
