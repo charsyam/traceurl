@@ -230,7 +230,7 @@ class TraceUrl(object):
             else:
                 break
 
-            return True, self.trace_urls
+        return True, self.trace_urls
 
     def get_trace_method(self, first_chance):
         if self.TRACE_MODE == FAST_TRACE_MODE and first_chance == True:
