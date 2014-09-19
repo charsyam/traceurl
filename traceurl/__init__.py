@@ -152,7 +152,7 @@ class TraceUrl(object):
                 paths = urlinfo.path.split('/')
                 paths[-1] = url
                 new_path = '/'.join(paths)
-                new_url = "%s://%s%s"%(urlinfo.scheme, urlinfo.netloc, new_path)
+                new_url = "%s://%s/%s"%(urlinfo.scheme, urlinfo.netloc, new_path)
 
         return new_url
 

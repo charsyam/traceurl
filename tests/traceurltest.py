@@ -63,5 +63,13 @@ class TestTraceUrl(unittest.TestCase):
         self.assertEqual(len(urls), len(result_urls))
         self.assertSequenceEqual(urls, result_urls)
 
+    #concat error
+    def test_url8(self):
+        result_urls = ['http://buy.lh.or.kr', 'http://buy.lh.or.kr/index.jsp', 'http://buy.lh.or.kr//main.jsp', 'http://buy.lh.or.kr///../comm/topmenu02.jsp']
+
+        ok, urls = self.request.go("http://buy.lh.or.kr")
+        self.assertEqual(len(urls), len(result_urls))
+        self.assertSequenceEqual(urls, result_urls)
+
 if __name__ == '__main__':
     unittest.main()
