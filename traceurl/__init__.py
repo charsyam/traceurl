@@ -156,12 +156,6 @@ class TraceUrl(object):
 
         return new_url
 
-    def is_same_url(self, url, new_url):
-        if(url == new_url):
-            return True
-
-        return False
-
     def encode_url_path(self, urlinfo, url):
         if self.need_encode(urlinfo.path) == False:
             return url
@@ -202,7 +196,7 @@ class TraceUrl(object):
                     if headers.has_key('location'):
                         new_url = headers['location']
                         new_url = self.get_new_url(o, new_url)
-                        if self.is_same_url(url, new_url):
+                        if new_url in self.trace_urls:
                             return True, self.trace_urls
 
                         url = new_url
@@ -220,7 +214,7 @@ class TraceUrl(object):
                     redirect_type, new_url = self.extract_rediection_info_from_body(body)
                     if redirect_type in REDIRECT_LIST:
                         new_url = self.get_new_url(o, new_url)
-                        if self.is_same_url(url, new_url):
+                        if new_url in self.trace_urls:
                             return True, self.trace_urls
 
                         url = new_url
@@ -234,8 +228,9 @@ class TraceUrl(object):
 
                 return True, self.trace_urls
             else:
+                break
 
-                return True, self.trace_urls
+            return True, self.trace_urls
 
     def get_trace_method(self, first_chance):
         if self.TRACE_MODE == FAST_TRACE_MODE and first_chance == True:
