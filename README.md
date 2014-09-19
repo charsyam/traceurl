@@ -31,6 +31,6 @@ request.go('http://charsyam.wordpress.com')
 import traceurl
 
 request = traceurl.TraceUrl()
-request.set_proxy_info('proxy.iwilab.com', 8088)
+request.set_proxy_info('proxy.abc.com', 1234)
 request.go('http://charsyam.wordpress.com')
 ```
