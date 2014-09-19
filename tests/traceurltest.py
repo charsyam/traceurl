@@ -41,7 +41,7 @@ class TestTraceUrl(unittest.TestCase):
 
     #frameset test
     def test_url5(self):
-        result_urls =  ['http://idol.zcc.kr', 'http://moum.kr/idol', 'http://moum.kr/idol/', 'http://www.toptoon.com/comic/ep_list/idoltwo/?p_id=page']
+        result_urls = ['http://idol.zcc.kr', 'http://moum.kr/idol', 'http://moum.kr/idol/', 'http://www.toptoon.com/comic/ep_list/idoltwo/?p_id=page']
 
         ok, urls = self.request.go("http://idol.zcc.kr")
         self.assertEqual(len(urls), len(result_urls))
@@ -49,9 +49,17 @@ class TestTraceUrl(unittest.TestCase):
 
     #han.lk test
     def test_url6(self):
-        result_urls =  ['http://han.lk/묘낳발론마', 'http://www.naver.com']
+        result_urls = ['http://han.lk/묘낳발론마', 'http://www.naver.com']
 
         ok, urls = self.request.go("http://han.lk/묘낳발론마")
+        self.assertEqual(len(urls), len(result_urls))
+        self.assertSequenceEqual(urls, result_urls)
+
+    #over limit times
+    def test_url7(self):
+        result_urls = ['http://bugs.kr/EZvRy', 'http://music.bugs.co.kr/track/3626773', 'http://www.bugs.co.kr/event/vipCouponChn', 'http://www.bugs.co.kr']
+
+        ok, urls = self.request.go("http://bugs.kr/EZvRy")
         self.assertEqual(len(urls), len(result_urls))
         self.assertSequenceEqual(urls, result_urls)
 
