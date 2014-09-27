@@ -57,7 +57,7 @@ class TestTraceUrl(unittest.TestCase):
 
     #over limit times
     def test_url7(self):
-        result_urls = ['http://bugs.kr/EZvRy', 'http://music.bugs.co.kr/track/3626773', 'http://www.bugs.co.kr/event/vipCouponChn', 'http://www.bugs.co.kr']
+        result_urls = ['http://bugs.kr/EZvRy', 'http://music.bugs.co.kr/track/3626773']
 
         ok, urls = self.request.go("http://bugs.kr/EZvRy")
         self.assertEqual(len(urls), len(result_urls))

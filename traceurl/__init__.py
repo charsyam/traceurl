@@ -16,6 +16,12 @@ FAST_TRACE_MODE = 1
 DEFAULT_TRACE_NUMBER = 7
 DEFAULT_TRACE_MODE = FAST_TRACE_MODE
 
+PARSE_NONE = 0
+PARSE_TAG = 1
+PARSE_STRING1 = 2
+PARSE_STRING2 = 3
+PARSE_HTMLCOMMENT = 4
+
 meta_redirect_pattern = re.compile("<meta\s+(http-equiv|content)=['\"]?([^'\"]+)['\"]?\s+(http-equiv|content)=['\"]?([^'\"]*)['\"]?\s*/?>")
 js1_redirect_pattern = re.compile("location.href\s*=\s*['\"]?([^'\"]*)['\"]?\s*/?")
 js2_redirect_pattern = re.compile("location.replace\s*\(\s*['\"]?([^'\"]*)[,]?['\"]?\s*/?\)")
@@ -39,7 +45,7 @@ class TraceUrl(object):
         self.TRACE_MODE     = DEFAULT_TRACE_MODE
         self.trace_urls     = []
         self.use_proxy      = False
-        self.proxy_type     = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL;
+        self.proxy_type     = httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL
         self.proxy_host     = None
         self.proxy_port     = 80
         self.use_punycode   = True
@@ -51,6 +57,68 @@ class TraceUrl(object):
         self.proxy_host = host
         self.proxy_port = port
 
+    def extract_script(self, body):
+        state = PARSE_NONE
+        sub_state = 0
+        in_tag = 0
+
+        tag_start = -1
+        result = ""
+
+        length = len(body)
+
+        start_tag_length = len("<script>")
+        end_tag_length = len("</script>")
+
+        i = 0;
+        while (i < length):
+            ch = body[i]
+            if state == PARSE_NONE and sub_state == PARSE_NONE and ch == '<':
+                if in_tag == 0 and (length - i > start_tag_length):
+                    tag = body[i:i+start_tag_length-1].lower()
+                    if tag == "<script":
+                        in_tag = 1
+                        i += (start_tag_length - 1 - 1)
+                        state = PARSE_TAG
+                elif in_tag == 1 and (length - i > end_tag_length):
+                    tag = body[i:i+end_tag_length].lower()
+                    if tag == "</script>":
+                        in_tag = 0
+                        state = PARSE_NONE
+                        content = body[tag_start:i]
+                        result += content
+                        i += (end_tag_length - 1)
+            elif state == PARSE_TAG and sub_state == PARSE_NONE and ch == '>':
+                tag_start = i+1
+                state = PARSE_NONE
+            elif sub_state not in [PARSE_STRING1, PARSE_STRING2] and ch == '"':
+                sub_state = PARSE_STRING1
+            elif sub_state not in [PARSE_STRING1, PARSE_STRING2] and ch == '\'':
+                sub_state = PARSE_STRING2
+            elif sub_state == PARSE_STRING1 and ch == '"':
+                sub_state = PARSE_NONE
+            elif sub_state == PARSE_STRING2 and ch == '\'':
+                sub_state = PARSE_NONE
+
+            i += 1
+
+        return result
+
+    def get_js_redirection_info(self, body):
+        script_body = self.extract_script(body)
+        if body == "":
+            return False, None
+
+        ok, url = self.get_js1_redirection_info(script_body)
+        if ok == True:
+            return True, url
+
+        ok, url = self.get_js2_redirection_info(script_body)
+        if ok == True:
+            return True, url
+
+        return False, None
+
     def extract_rediection_info_from_body(self, body):
         ok, url = self.get_meta_redirection_info(body)
         if ok == True:
@@ -60,11 +128,7 @@ class TraceUrl(object):
         if ok == True:
             return FRAMESET_REDIRECT_TYPE, url
 
-        ok, url = self.get_js1_redirection_info(body)
-        if ok == True:
-            return JS_REDIRECT_TYPE, url
-
-        ok, url = self.get_js2_redirection_info(body)
+        ok, url = self.get_js_redirection_info(body)
         if ok == True:
             return JS_REDIRECT_TYPE, url
 
@@ -95,7 +159,7 @@ class TraceUrl(object):
 
         return find, url
 
-    def get_js_redirection_info(self, body, pattern):
+    def get_js_redirection_info_internal(self, body, pattern):
         groups = pattern.findall(body)
 
         find = False
@@ -112,11 +176,11 @@ class TraceUrl(object):
 
     def get_js1_redirection_info(self, body):
         global js1_redirect_pattern
-        return self.get_js_redirection_info(body, js1_redirect_pattern)
+        return self.get_js_redirection_info_internal(body, js1_redirect_pattern)
 
     def get_js2_redirection_info(self, body):
         global js2_redirect_pattern
-        return self.get_js_redirection_info(body, js2_redirect_pattern)
+        return self.get_js_redirection_info_internal(body, js2_redirect_pattern)
 
     def get_meta_redirection_info(self, body):
         global meta_redirect_pattern
