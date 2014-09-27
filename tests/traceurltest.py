@@ -71,5 +71,13 @@ class TestTraceUrl(unittest.TestCase):
         self.assertEqual(len(urls), len(result_urls))
         self.assertSequenceEqual(urls, result_urls)
 
+    #remove onclick javascript location change
+    def test_url9(self):
+        result_urls = ['http://www.humorschool.co.kr/test/64']
+
+        ok, urls = self.request.go("http://www.humorschool.co.kr/test/64")
+        self.assertEqual(len(urls), len(result_urls))
+        self.assertSequenceEqual(urls, result_urls)
+
 if __name__ == '__main__':
     unittest.main()
