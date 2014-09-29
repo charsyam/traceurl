@@ -7,6 +7,7 @@ import re
 from urlparse import urlparse
 import urllib
 
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.124 Safari/537.36"
 #Using GET ONLY
 DETAIL_TRACE_MODE = 0
 
@@ -37,6 +38,10 @@ REDIRECT_LIST = [
         JS_REDIRECT_TYPE,
         FRAMESET_REDIRECT_TYPE
 ]
+
+GET_ONLY = {
+        "me2.do": 1
+}
 
 class TraceUrl(object):
 
@@ -74,13 +79,13 @@ class TraceUrl(object):
         while (i < length):
             ch = body[i]
             if state == PARSE_NONE and sub_state == PARSE_NONE and ch == '<':
-                if in_tag == 0 and (length - i > start_tag_length):
+                if in_tag == 0 and (length - i >= start_tag_length):
                     tag = body[i:i+start_tag_length-1].lower()
                     if tag == "<script":
                         in_tag = 1
                         i += (start_tag_length - 1 - 1)
                         state = PARSE_TAG
-                elif in_tag == 1 and (length - i > end_tag_length):
+                elif in_tag == 1 and (length - i >= end_tag_length):
                     tag = body[i:i+end_tag_length].lower()
                     if tag == "</script>":
                         in_tag = 0
@@ -104,20 +109,38 @@ class TraceUrl(object):
 
         return result
 
+    def get_prefer_url(self, url1, url2):
+        prefer_url = ""
+        if url1 != "" and self.is_not_url(url1) == False:
+            return url1
+        elif url2 != "" and self.is_not_url(url2) == False:
+            return url2
+
+        return prefer_url
+
     def get_js_redirection_info(self, body):
         script_body = self.extract_script(body)
         if body == "":
             return False, None
 
-        ok, url = self.get_js1_redirection_info(script_body)
-        if ok == True:
-            return True, url
+        ret = False
+        prefer_url = ""
+        ok1, url1 = self.get_js1_redirection_info(script_body)
+        ok2, url2 = self.get_js2_redirection_info(script_body)
 
-        ok, url = self.get_js2_redirection_info(script_body)
-        if ok == True:
-            return True, url
+        if ok1 == True or ok2 == True:
+            ret = True
 
-        return False, None
+        if ret == True:
+            prefer_url = self.get_prefer_url(url1, url2)
+            if prefer_url is "":
+                if url1 is not "":
+                    prefer_url = url1
+                elif url2 is not "":
+                    prefer_url = url2
+
+        return ret, prefer_url
+
 
     def extract_rediection_info_from_body(self, body):
         ok, url = self.get_meta_redirection_info(body)
@@ -202,13 +225,16 @@ class TraceUrl(object):
         return find, url
 
     def append_url(self, url):
-        self.trace_urls.append(url)
+        if url not in self.trace_urls:
+            self.trace_urls.append(url)
 
     def get_new_url(self, urlinfo, url):
         new_url = ""
         if url.startswith('http://') == True or \
            url.startswith('https://') == True:
                new_url = url
+        elif url.startswith('market://') == True:
+            new_url = url
         else:
             if url.startswith('/') == True:
                 new_url = "%s://%s%s"%(urlinfo.scheme, urlinfo.netloc, url)
@@ -254,7 +280,7 @@ class TraceUrl(object):
             o = urlparse(url)
             url = self.encode_url_path(o, url)
             add_url = True
-            status, request, headers, body = self.trace(url, request)
+            status, request, headers, body = self.trace(url, o.netloc, request)
             if status == True:
                 if int(headers['status']) in [300, 301, 302, 303, 307]:
                     if headers.has_key('location'):
@@ -274,7 +300,11 @@ class TraceUrl(object):
                     if headers['content-type'].startswith("text/html") is False:
                         return True, self.trace_urls
 
-                    status, request, headers, body = self.trace(url, request)
+                    if self.current_method == 'HEAD':
+                        add_url = False
+                        continue
+#                        status, request, headers, body = self.trace(url, o.netloc, request)
+
                     redirect_type, new_url = self.extract_rediection_info_from_body(body)
                     if redirect_type in REDIRECT_LIST:
                         new_url = self.get_new_url(o, new_url)
@@ -292,11 +322,15 @@ class TraceUrl(object):
 
                 return True, self.trace_urls
             else:
+                self.append_url(url)
                 break
 
         return True, self.trace_urls
 
-    def get_trace_method(self, first_chance):
+    def get_trace_method(self, first_chance, wanted):
+        if wanted is not None:
+            return wanted
+
         if self.TRACE_MODE == FAST_TRACE_MODE and first_chance == True:
             return "HEAD"
 
@@ -344,7 +378,22 @@ class TraceUrl(object):
         pi.proxy_type = self.proxy_type
         return pi
 
-    def trace(self, url, request = None):
+    def method(self, host):
+        if host in GET_ONLY:
+            return "GET"
+
+        return None
+
+    def is_not_url(self, url):
+        if url.startswith('market://') == True:
+            return True
+
+        return False
+
+    def trace(self, url, host, request = None):
+        if self.is_not_url(url) == True:
+            return False, None, None, None
+
         first_chance = True
         if request is None:
             request = httplib2.Http()
@@ -355,8 +404,8 @@ class TraceUrl(object):
             first_chance = False
 
         try:
-            self.current_method = self.get_trace_method(first_chance)
-            resp = request.request(url, self.current_method)
+            self.current_method = self.get_trace_method(first_chance, self.method(host))
+            resp = request.request(url, self.current_method, headers={'user-agent': USER_AGENT})
             return True, request, resp[0], resp[1]
         except:
             return False, None, None, None
