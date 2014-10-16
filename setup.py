@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='traceurl',
-        version='0.9.12',
+        version='0.9.13',
         description='Python Url Tracing Library',
         author='DaeMyung Kang',
         author_email='charsyam@gmail.com',

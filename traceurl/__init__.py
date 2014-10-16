@@ -281,6 +281,9 @@ class TraceUrl(object):
             url = self.encode_url_path(o, url)
             add_url = True
             status, request, headers, body = self.trace(url, o.netloc, request)
+            if headers == None:
+                return True, self.trace_urls
+
             if 'content-type' not in headers:
                 headers['content-type'] = "unknown"
 
